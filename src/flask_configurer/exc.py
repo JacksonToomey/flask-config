@@ -1,0 +1,6 @@
+class ConfigurationError(Exception):
+    ...
+
+
+class MissingConfigurationError(ConfigurationError):
+    ...
