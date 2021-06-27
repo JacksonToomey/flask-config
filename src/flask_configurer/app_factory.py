@@ -7,6 +7,7 @@ from typing import Any
 from typing import Callable
 from typing import Generic
 from typing import Optional
+from typing import Protocol
 from typing import Type
 from typing import TypeVar
 from typing import Union
@@ -16,17 +17,24 @@ from celery import Celery
 from flask import Flask
 from inject import clear_and_configure
 
+from flask_configurer.dependencies import BaseCeleryDependencyBuilder
 from flask_configurer.dependencies import BaseDependencyBuilder
+from flask_configurer.dependencies import BaseFlaskDependencyBuilder
 from flask_configurer.entities import BaseConfig
 from flask_configurer.exc import MissingConfigurationError
 
 
-T = TypeVar("T", bound=Union[Flask, Celery])
+class Constructable(Protocol):
+    def __init__(self, import_name: str) -> None:
+        ...
+
+
+C = TypeVar("C", bound=BaseConfig)
+T = TypeVar("T", bound=Constructable)
 D = TypeVar("D", bound=BaseDependencyBuilder)
 F = TypeVar(
     "F", bound=Union[Callable[["BaseAppFactory[T, D, C]", Flask], None], Callable[["BaseAppFactory[T, D, C]", Celery], None]]
 )
-C = TypeVar("C", bound=BaseConfig)
 
 
 def loader(f: F) -> F:
@@ -59,7 +67,7 @@ class BaseAppFactory(ABC, Generic[T, D, C]):
         return app
 
     def _create_app(self, import_name: str) -> T:
-        return cast(T, self.app_class(import_name))
+        return self.app_class(import_name)
 
     def _run_loaders(self, app: T) -> None:
         for method_name in self._loader_methods:
@@ -80,60 +88,17 @@ class BaseAppFactory(ABC, Generic[T, D, C]):
         return cast(C, cls.config_class(**args))
 
 
-# class AttatchedError(Protocol):
-#     exc: ValidationError
+class FlaskAppFactory(BaseAppFactory[Flask, BaseFlaskDependencyBuilder, C]):
+    app_class = Flask
+    dependency_builder_class = BaseFlaskDependencyBuilder
+
+    def _configure_app(self, app: Flask, config: BaseConfig) -> None:
+        app.config.from_object(config)
 
 
-# class FlaskAppFactory(BaseAppFactory[Flask, FlaskDependencyBuilder]):
-#     app_class = Flask
-#     dependency_builder_class = FlaskDependencyBuilder
-#
-#     def _configure_app(self, app: Flask, config: BaseConfig) -> None:
-#         app.config.from_object(config)
-#
-#     @loader
-#     def _load_extensions(self, app: Flask) -> None:
-#         csrf.init_app(app)
-#         api = Api(app)
-#         api.register_blueprint(login_bp, url_prefix="/auth")
-#         api.register_blueprint(api_bp, url_prefix="/api")
-#
-#         @app.context_processor
-#         def _context() -> dict[str, Any]:
-#             return dict(user=g.get("user", None))
-#
-#         @app.before_first_request
-#         def _load_db() -> None:
-#             engine = instance(Engine)
-#             META_DATA.create_all(engine)
-#
-#             session = instance(Session)
-#             user = session.query(User).first()
-#             if not user:
-#                 session.add(User(email="1", password="2"))
-#                 session.commit()
-#
-#     @loader
-#     def _load_error_handlers(self, app: Flask) -> None:
-#         @app.errorhandler(403)
-#         def _handle_forbidden(_: Exception) -> tuple[Response, int]:
-#             return jsonify({}), 403
-#
-#         @app.errorhandler(422)  # type: ignore
-#         def _handle_validation_error(e: UnprocessableEntity) -> tuple[Response, int]:
-#             err = cast(AttatchedError, e)
-#             ve = err.exc
-#             messages = cast(dict[str, Any], ve.messages)
-#             return jsonify(messages.get("json", {})), 422
-#
-#
-# class CeleryAppFactory(BaseAppFactory[Celery, CeleryDependencyBuilder]):
-#     app_class = Celery
-#     dependency_builder_class = CeleryDependencyBuilder
-#
-#     def _configure_app(self, app: Celery, config: BaseConfig) -> None:
-#         app.config_from_object(config)
-#
-#     @loader
-#     def _load_tasks(self, app: Celery) -> None:
-#         register_tasks(app)
+class CeleryAppFactory(BaseAppFactory[Celery, BaseCeleryDependencyBuilder, C]):
+    app_class = Celery
+    dependency_builder_class = BaseCeleryDependencyBuilder
+
+    def _configure_app(self, app: Celery, config: BaseConfig) -> None:
+        app.config_from_object(config)

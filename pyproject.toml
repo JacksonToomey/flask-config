@@ -15,7 +15,6 @@ celery = "^5.1.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"
-pytest-flask = "^1.2.0"
 pytest-cov = "^2.12.1"
 pre-commit = "^2.13.0"
 black = "^21.6b0"
