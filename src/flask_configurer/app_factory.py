@@ -88,17 +88,17 @@ class BaseAppFactory(ABC, Generic[T, D, C]):
         return cast(C, cls.config_class(**args))
 
 
-class FlaskAppFactory(BaseAppFactory[Flask, BaseFlaskDependencyBuilder, C]):
+class BaseFlaskAppFactory(BaseAppFactory[Flask, BaseFlaskDependencyBuilder, C]):
     app_class = Flask
     dependency_builder_class = BaseFlaskDependencyBuilder
 
     def _configure_app(self, app: Flask, config: BaseConfig) -> None:
-        app.config.from_object(config)
+        app.config.from_object(config)  # pragma: no cover
 
 
-class CeleryAppFactory(BaseAppFactory[Celery, BaseCeleryDependencyBuilder, C]):
+class BaseCeleryAppFactory(BaseAppFactory[Celery, BaseCeleryDependencyBuilder, C]):
     app_class = Celery
     dependency_builder_class = BaseCeleryDependencyBuilder
 
     def _configure_app(self, app: Celery, config: BaseConfig) -> None:
-        app.config_from_object(config)
+        app.config_from_object(config)  # pragma: no cover

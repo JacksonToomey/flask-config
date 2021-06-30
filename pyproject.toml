@@ -40,6 +40,9 @@ addopts = "--cov=flask_configurer --cov-report term-missing --cov-fail-under=100
 [tool.coverage.run]
 omit = []
 
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "\\.\\.\\."]
+
 [tool.mypy]
 python_version = "3.9"
 files = ["src", "tests"]
